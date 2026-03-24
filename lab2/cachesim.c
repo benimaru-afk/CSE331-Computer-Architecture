@@ -1,17 +1,11 @@
 /******************************************************************************
  *
- * filename: cachesim.c
+ * @file cachesim.c
+ * @brief A simple cache simulator that models different cache configurations
+ *        and tracks performance statistics based on memory access traces.
  *
- * description: Implements a cache simulator.
- *
- * authors: Benjamin Mannal
- *
- * class: CSE 3031
- * instructor: Zheng
- * assignment: Lab #2
- *
- * assigned: 3/3/2026
- * due: 3/24/2026
+ * @author Benjamin Mannal
+ * @date Assigned: 3/3/2026 | Due: 3/24/2026
  *
  ******************************************************************************/
 
@@ -22,31 +16,50 @@
 #include <math.h>
 #include <time.h>
 
-/* Cache line structure */
+/**
+ * @brief Represents a single cache line.
+ *
+ * Stores whether the line is valid, its tag, and ordering info
+ * used for FIFO replacement.
+ */
 typedef struct {
     int valid;
     uint32_t tag;
-    uint32_t fifo_order;  /* For FIFO replacement */
+    uint32_t fifo_order;
 } CacheLine;
 
-/* Cache set structure */
+/**
+ * @brief Represents a cache set.
+ *
+ * Contains multiple cache lines and a counter to track
+ * insertion order for FIFO replacement.
+ */
 typedef struct {
     CacheLine *lines;
     uint32_t fifo_counter;
 } CacheSet;
 
-/* Cache structure */
+/**
+ * @brief Represents the full cache structure.
+ *
+ * Holds all sets along with configuration parameters
+ * such as associativity, line size, and policies.
+ */
 typedef struct {
     CacheSet *sets;
     int num_sets;
     int associativity;
     int line_size;
-    int replacement_policy;  /* 0 = random, 1 = FIFO */
+    int replacement_policy;
     int miss_penalty;
-    int write_allocate;      /* 0 = no-write-allocate, 1 = write-allocate */
+    int write_allocate;
 } Cache;
 
-/* Statistics structure */
+/**
+ * @brief Tracks statistics for cache simulation.
+ *
+ * Keeps counts of accesses, hits, and cycle-related metrics.
+ */
 typedef struct {
     uint64_t total_accesses;
     uint64_t total_hits;
@@ -55,21 +68,57 @@ typedef struct {
     uint64_t store_accesses;
     uint64_t store_hits;
     uint64_t total_cycles;
-    uint64_t total_mem_access_cycles;  /* Cycles spent on memory accesses only */
+    uint64_t total_mem_access_cycles;
 } Stats;
 
-/* Function prototypes */
+/**
+ * @brief Allocates and initializes a cache based on given parameters.
+ */
 Cache* create_cache(int line_size, int associativity, int data_size_kb, 
                     int replacement_policy, int miss_penalty, int write_allocate);
+
+/**
+ * @brief Frees all memory associated with a cache.
+ */
 void free_cache(Cache *cache);
+
+/**
+ * @brief Simulates a cache access and determines hit or miss.
+ *
+ * @return 1 if hit, 0 if miss
+ */
 int access_cache(Cache *cache, uint32_t address, char access_type, Stats *stats);
+
+/**
+ * @brief Reads cache configuration values from a file.
+ */
 void parse_config(const char *filename, int *line_size, int *associativity, 
                   int *data_size_kb, int *replacement_policy, 
                   int *miss_penalty, int *write_allocate);
+
+/**
+ * @brief Processes a memory trace file and updates statistics.
+ */
 void process_trace(Cache *cache, const char *trace_filename, Stats *stats);
+
+/**
+ * @brief Writes simulation results to an output file.
+ */
 void write_output(const char *filename, Stats *stats);
+
+/**
+ * @brief Extracts the set index from a memory address.
+ */
 uint32_t get_set_index(Cache *cache, uint32_t address);
+
+/**
+ * @brief Extracts the tag from a memory address.
+ */
 uint32_t get_tag(Cache *cache, uint32_t address);
+
+/**
+ * @brief Computes integer log base 2.
+ */
 int log2_int(int value);
 
 int main(int argc, char *argv[]) {
@@ -78,17 +127,17 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    /* Initialize random seed */
+    /**
+     * @brief Seed random number generator for random replacement policy.
+     */
     srand(time(NULL));
 
-    /* Parse configuration file */
     int line_size, associativity, data_size_kb;
     int replacement_policy, miss_penalty, write_allocate;
     
     parse_config(argv[1], &line_size, &associativity, &data_size_kb, 
                  &replacement_policy, &miss_penalty, &write_allocate);
 
-    /* Create cache */
     Cache *cache = create_cache(line_size, associativity, data_size_kb, 
                                 replacement_policy, miss_penalty, write_allocate);
 
@@ -97,26 +146,24 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    /* Initialize statistics */
     Stats stats = {0};
 
-    /* Generate output filename */
     char output_filename[256];
     snprintf(output_filename, sizeof(output_filename), "%s.out", argv[2]);
 
-    /* Process trace file */
     process_trace(cache, argv[2], &stats);
-
-    /* Write output */
     write_output(output_filename, &stats);
 
-    /* Cleanup */
     free_cache(cache);
 
     return 0;
 }
 
-/* Create and initialize cache */
+/**
+ * @brief Builds and initializes a cache structure.
+ *
+ * Determines number of sets and allocates memory for all sets and lines.
+ */
 Cache* create_cache(int line_size, int associativity, int data_size_kb, 
                     int replacement_policy, int miss_penalty, int write_allocate) {
     Cache *cache = (Cache *)malloc(sizeof(Cache));
@@ -127,12 +174,10 @@ Cache* create_cache(int line_size, int associativity, int data_size_kb,
     cache->miss_penalty = miss_penalty;
     cache->write_allocate = write_allocate;
 
-    /* Calculate number of lines and sets */
-    int total_data_size = data_size_kb * 1024;  /* Convert KB to bytes */
+    int total_data_size = data_size_kb * 1024;
     int num_lines = total_data_size / line_size;
 
     if (associativity == 0) {
-        /* Fully associative */
         cache->num_sets = 1;
         cache->associativity = num_lines;
     } else {
@@ -140,19 +185,16 @@ Cache* create_cache(int line_size, int associativity, int data_size_kb,
         cache->num_sets = num_lines / associativity;
     }
 
-    /* Allocate sets */
     cache->sets = (CacheSet *)malloc(cache->num_sets * sizeof(CacheSet));
     if (cache->sets == NULL) {
         free(cache);
         return NULL;
     }
 
-    /* Allocate lines for each set */
     for (int i = 0; i < cache->num_sets; i++) {
         cache->sets[i].lines = (CacheLine *)calloc(cache->associativity, sizeof(CacheLine));
         cache->sets[i].fifo_counter = 0;
         if (cache->sets[i].lines == NULL) {
-            /* Cleanup on failure */
             for (int j = 0; j < i; j++) {
                 free(cache->sets[j].lines);
             }
@@ -165,7 +207,9 @@ Cache* create_cache(int line_size, int associativity, int data_size_kb,
     return cache;
 }
 
-/* Free cache memory */
+/**
+ * @brief Releases all dynamically allocated cache memory.
+ */
 void free_cache(Cache *cache) {
     if (cache == NULL) return;
     
@@ -176,7 +220,9 @@ void free_cache(Cache *cache) {
     free(cache);
 }
 
-/* Calculate log base 2 of an integer */
+/**
+ * @brief Computes log base 2 using bit shifting.
+ */
 int log2_int(int value) {
     int result = 0;
     while (value > 1) {
@@ -186,7 +232,9 @@ int log2_int(int value) {
     return result;
 }
 
-/* Get set index from address */
+/**
+ * @brief Determines which cache set an address maps to.
+ */
 uint32_t get_set_index(Cache *cache, uint32_t address) {
     int offset_bits = log2_int(cache->line_size);
     int set_bits = log2_int(cache->num_sets);
@@ -195,7 +243,9 @@ uint32_t get_set_index(Cache *cache, uint32_t address) {
     return set_index;
 }
 
-/* Get tag from address */
+/**
+ * @brief Extracts the tag bits from a memory address.
+ */
 uint32_t get_tag(Cache *cache, uint32_t address) {
     int offset_bits = log2_int(cache->line_size);
     int set_bits = log2_int(cache->num_sets);
@@ -204,33 +254,31 @@ uint32_t get_tag(Cache *cache, uint32_t address) {
     return tag;
 }
 
-/* Access cache and return 1 if hit, 0 if miss */
+/**
+ * @brief Simulates accessing the cache.
+ *
+ * Handles hits, misses, replacement policy, and updates timing stats.
+ */
 int access_cache(Cache *cache, uint32_t address, char access_type, Stats *stats) {
     uint32_t set_index = get_set_index(cache, address);
     uint32_t tag = get_tag(cache, address);
     
     CacheSet *set = &cache->sets[set_index];
     
-    /* Check for hit */
     for (int i = 0; i < cache->associativity; i++) {
         if (set->lines[i].valid && set->lines[i].tag == tag) {
-            /* Hit */
-            stats->total_mem_access_cycles += 1;  /* Hit time is 1 cycle */
+            stats->total_mem_access_cycles += 1;
             return 1;
         }
     }
     
-    /* Miss - need to handle based on write policy */
     if (access_type == 's' && cache->write_allocate == 0) {
-        /* Store miss with no-write-allocate: don't bring into cache */
         stats->total_mem_access_cycles += 1 + cache->miss_penalty;
         return 0;
     }
     
-    /* Miss - need to replace a line */
     int replace_index = -1;
     
-    /* First check for invalid (empty) line */
     for (int i = 0; i < cache->associativity; i++) {
         if (!set->lines[i].valid) {
             replace_index = i;
@@ -238,13 +286,10 @@ int access_cache(Cache *cache, uint32_t address, char access_type, Stats *stats)
         }
     }
     
-    /* If no invalid line found, use replacement policy */
     if (replace_index == -1) {
         if (cache->replacement_policy == 0) {
-            /* Random replacement */
             replace_index = rand() % cache->associativity;
         } else {
-            /* FIFO replacement */
             uint32_t oldest_order = set->lines[0].fifo_order;
             replace_index = 0;
             for (int i = 1; i < cache->associativity; i++) {
@@ -256,16 +301,17 @@ int access_cache(Cache *cache, uint32_t address, char access_type, Stats *stats)
         }
     }
     
-    /* Replace the line */
     set->lines[replace_index].valid = 1;
     set->lines[replace_index].tag = tag;
     set->lines[replace_index].fifo_order = set->fifo_counter++;
     
     stats->total_mem_access_cycles += 1 + cache->miss_penalty;
-    return 0;  /* Miss */
+    return 0;
 }
 
-/* Parse configuration file */
+/**
+ * @brief Reads cache configuration parameters from file.
+ */
 void parse_config(const char *filename, int *line_size, int *associativity, 
                   int *data_size_kb, int *replacement_policy, 
                   int *miss_penalty, int *write_allocate) {
@@ -289,7 +335,9 @@ void parse_config(const char *filename, int *line_size, int *associativity,
     fclose(file);
 }
 
-/* Process trace file */
+/**
+ * @brief Processes a trace file and updates cache statistics.
+ */
 void process_trace(Cache *cache, const char *trace_filename, Stats *stats) {
     FILE *file = fopen(trace_filename, "r");
     if (file == NULL) {
@@ -302,10 +350,8 @@ void process_trace(Cache *cache, const char *trace_filename, Stats *stats) {
     int instructions;
 
     while (fscanf(file, " %c %x %d", &access_type, &address, &instructions) == 3) {
-        /* Add cycles for instructions executed since last memory access */
         stats->total_cycles += instructions;
 
-        /* Update access counts */
         stats->total_accesses++;
         if (access_type == 'l') {
             stats->load_accesses++;
@@ -313,7 +359,6 @@ void process_trace(Cache *cache, const char *trace_filename, Stats *stats) {
             stats->store_accesses++;
         }
 
-        /* Access cache (this will update total_mem_access_cycles) */
         int hit = access_cache(cache, address, access_type, stats);
 
         if (hit) {
@@ -324,18 +369,16 @@ void process_trace(Cache *cache, const char *trace_filename, Stats *stats) {
                 stats->store_hits++;
             }
         }
-        
-        /* Add memory access cycles to total cycles */
-        /* Note: access_cache already added to total_mem_access_cycles */
     }
-    
-    /* Add the memory access cycles to total cycles */
+
     stats->total_cycles += stats->total_mem_access_cycles;
 
     fclose(file);
 }
 
-/* Write output statistics to file */
+/**
+ * @brief Writes computed statistics to an output file.
+ */
 void write_output(const char *filename, Stats *stats) {
     FILE *file = fopen(filename, "w");
     if (file == NULL) {
@@ -343,7 +386,6 @@ void write_output(const char *filename, Stats *stats) {
         exit(1);
     }
 
-    /* Calculate hit rates */
     double total_hit_rate = (stats->total_accesses > 0) ? 
         (100.0 * stats->total_hits / stats->total_accesses) : 0.0;
     
@@ -353,12 +395,9 @@ void write_output(const char *filename, Stats *stats) {
     double store_hit_rate = (stats->store_accesses > 0) ? 
         (100.0 * stats->store_hits / stats->store_accesses) : 0.0;
     
-    /* Calculate average memory access latency */
-    /* This is total_mem_access_cycles / total_accesses */
     double avg_mem_latency = (stats->total_accesses > 0) ? 
         ((double)stats->total_mem_access_cycles / stats->total_accesses) : 0.0;
 
-    /* Write statistics */
     fprintf(file, "%.4f\n", total_hit_rate);
     fprintf(file, "%.4f\n", load_hit_rate);
     fprintf(file, "%.4f\n", store_hit_rate);
