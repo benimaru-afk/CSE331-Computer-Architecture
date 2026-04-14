@@ -1,0 +1,88 @@
+sim-profile: SimpleScalar/Alpha Tool Set version 3.0 of March, 2023.
+Copyright (c) 1994-2003 by Todd M. Austin, Ph.D. and SimpleScalar, LLC.
+All Rights Reserved. This version of SimpleScalar is licensed for academic
+non-commercial use.  No portion of this work may be used by any commercial
+entity, or for any commercial purpose, without the prior written permission
+of SimpleScalar, LLC (info@simplescalar.com).
+
+warning: section `.comment' ignored...
+sim: command line: ./sim-profile -iclass ../benchmarks/benchmarks/compress95.alpha ../benchmarks/benchmarks/compress95.in 
+
+sim: simulation started @ Thu Feb 19 19:52:56 2026, options follow:
+
+sim-profile: This simulator implements a functional simulator with
+profiling support.  Run with the `-h' flag to see profiling options
+available.
+
+# -config                     # load configuration from a file
+# -dumpconfig                 # dump configuration to a file
+# -h                    false # print help message    
+# -v                    false # verbose operation     
+# -d                    false # enable debug message  
+# -i                    false # start in Dlite debugger
+-seed                       1 # random number generator seed (0 for timer seed)
+# -q                    false # initialize and terminate immediately
+# -chkpt               <null> # restore EIO trace execution from <fname>
+# -redir:sim           <null> # redirect simulator output to file (non-interactive only)
+# -redir:prog          <null> # redirect simulated program output to file
+-nice                       0 # simulator scheduling priority
+-max:inst                   0 # maximum number of inst's to execute
+-all                    false # enable all profile options
+-iclass                  true # enable instruction class profiling
+-iprof                  false # enable instruction profiling
+-brprof                 false # enable branch instruction profiling
+-amprof                 false # enable address mode profiling
+-segprof                false # enable load/store address segment profiling
+-tsymprof               false # enable text symbol profiling
+-taddrprof              false # enable text address profiling
+-dsymprof               false # enable data symbol profiling
+-internal               false # include compiler-internal symbols during symbol profiling
+# -pcstat              <null> # profile stat(s) against text addr's (mult uses ok)
+
+sim: ** starting functional simulation **
+warning: partially supported sigaction() call...
+compress95.in: filename too long to tack on .Z
+
+sim: ** simulation statistics **
+sim_num_insn                   5017 # total number of instructions executed
+sim_num_refs                   1311 # total number of loads and stores executed
+sim_elapsed_time                  1 # total simulation time in seconds
+sim_inst_rate             5017.0000 # simulation speed (in insts/sec)
+
+sim_inst_class_prof    # instruction class profile
+sim_inst_class_prof.array_size = 7
+sim_inst_class_prof.bucket_size = 1
+sim_inst_class_prof.count = 7
+sim_inst_class_prof.total = 5016
+sim_inst_class_prof.imin = 0
+sim_inst_class_prof.imax = 7
+sim_inst_class_prof.average = 716.5714
+sim_inst_class_prof.std_dev = 952.9591
+sim_inst_class_prof.overflows = 0
+# pdf == prob dist fn, cdf == cumulative dist fn
+#          index      count    pdf 
+sim_inst_class_prof.start_dist
+load                    754  15.03 
+store                   557  11.10 
+uncond branch           235   4.69 
+cond branch             693  13.82 
+int computation        2762  55.06 
+fp computation            0   0.00 
+trap                     15   0.30 
+sim_inst_class_prof.end_dist
+
+ld_text_base           0x0120000000 # program text (code) segment base
+ld_text_size                  65536 # program text (code) size in bytes
+ld_data_base           0x0140000000 # program initialized data segment base
+ld_data_size                 743728 # program init'ed `.data' and uninit'ed `.bss' size in bytes
+ld_stack_base          0x011ff9b000 # program stack segment base (highest address in stack)
+ld_stack_size                 16384 # program initial stack size
+ld_prog_entry          0x0120002050 # program entry point (initial PC)
+ld_environ_base        0x011ff97000 # program environment base address address
+ld_target_big_endian              0 # target executable endian-ness, non-zero if big endian
+mem.page_count                   17 # total number of pages allocated
+mem.page_mem                   136k # total size of memory pages allocated
+mem.ptab_misses                 246 # total first level page table misses
+mem.ptab_accesses            181635 # total page table accesses
+mem.ptab_miss_rate           0.0014 # first level page table miss rate
+
